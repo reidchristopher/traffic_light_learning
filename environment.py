@@ -66,7 +66,8 @@ class TrafficEnvironment:
             max_speed_curr, mean_speed_curr = self.__get_speed_information()
             reward = self.__reward(total_wait_curr, max_speed_curr, mean_speed_curr)
 
-            # action = action
+            # Select the light phase to activate, based on the current state of the intersection
+            action = self.__choose_action(state_curr)
 
     # Private method
     # Method for getting state
@@ -151,6 +152,16 @@ class TrafficEnvironment:
     def __reward(self, total_wait, max_speed, mean_speed):
         # This is tentative reward (design it later...)
         return total_wait + max_speed + mean_speed
+
+    # Method for selecting the action
+    def __choose_action(self, state):
+        # If function for epsilon-greedy policy
+        if random.random() < self.epsilon:
+            # Return random action for exploration
+            return random.randint()
+        else:
+            # Return best action given the current state (exploitation)
+            return np.argmax()
 
     # Method for resetting the environment
     def __reset(self):
