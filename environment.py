@@ -1,79 +1,168 @@
 #!/usr/bin/env python
-# Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
-# Copyright (C) 2009-2019 German Aerospace Center (DLR) and others.
-# This program and the accompanying materials
-# are made available under the terms of the Eclipse Public License v2.0
-# which accompanies this distribution, and is available at
-# http://www.eclipse.org/legal/epl-v20.html
-# SPDX-License-Identifier: EPL-2.0
-
-# @file    runner.py
-# @author  Lena Kalleske
-# @author  Daniel Krajzewicz
-# @author  Michael Behrisch
-# @author  Jakob Erdmann
-# @date    2009-03-26
-# @version $Id$
-
-from __future__ import absolute_import
-from __future__ import print_function
 
 import os
 import sys
-import optparse
 import random
 
-# we need to import python modules from the $SUMO_HOME/tools directory
+import optparse
+import numpy as np
+
+# Import libraries for the traffic light simulator
 if 'SUMO_HOME' in os.environ:
     tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
     sys.path.append(tools)
 else:
     sys.exit("please declare environment variable 'SUMO_HOME'")
 
-from sumolib import checkBinary  # noqa
-import traci  # noqa
+from sumolib import checkBinary
+import traci
 
-def run():
-    """execute the TraCI control loop"""
-    step = 0
-    # we start with phase 2 where EW has green
-    traci.trafficlight.setPhase("0", 2)
-    while traci.simulation.getMinExpectedNumber() > 0:
-        traci.simulationStep()
-        if traci.trafficlight.getPhase("0") == 2:
-            # we are not already switching
-            if traci.inductionloop.getLastStepVehicleNumber("0") > 0:
-                # there is a vehicle from the north, switch
-                traci.trafficlight.setPhase("0", 3)
+
+class TrafficEnvironment:
+
+    # Constructor
+    def __init__(self, epsilon, max_steps, input_size, cell_number):
+        # Initialize global variables
+        self.epsilon = epsilon
+        self.steps = 0
+        self.max_steps = max_steps
+        self.waiting_times = {}
+        self.speeds = {}
+
+        self.lane_length = 500
+        self.input_size = input_size
+        self.cell_number = cell_number
+        self.cell_length = self.lane_length / self.cell_number
+        self.lane_ids = {'Wi_0': 0, 'Wi_1': 0, 'Wi_2': 1,
+                         'Ei_0': 2, 'Ei_1': 2, 'Ei_2': 3,
+                         'Si_0': 4, 'Si_1': 4, 'Si_2': 5,
+                         'Ni_0': 6, 'Ni_1': 6, 'Ni_2': 7}
+        self.incoming_roads = ['Wi', 'Ei', 'Si', 'Ni']
+
+    # Public method
+    # Method for running simulation of one episode
+    def run(self, episode):
+
+        # Select whether gui is shown or not
+        options = self.__get_options()
+        if options.nogui:
+            sumoBinary = checkBinary('sumo')
+        else:
+            sumoBinary = checkBinary('sumo-gui')
+
+        # Start simulation
+        traci.start([sumoBinary, "-c", "data/cross.sumocfg", "--tripinfo-output", "tripinfo.xml"])
+
+        # Reset variables for RL
+        self.__reset()
+
+        # Loop function for processing steps during one episode
+        while self.steps < self.max_steps:
+            # Get current state of the intersection
+            state_curr = self.__get_state()
+
+            # Obtain waiting time and speed information for computing reward
+            total_wait_curr = self.__get_waiting_times()
+            max_speed_curr, mean_speed_curr = self.__get_speed_information()
+            reward = self.__reward(total_wait_curr, max_speed_curr, mean_speed_curr)
+
+            # action = action
+
+    # Private method
+    # Method for getting state
+    def __get_state(self):
+
+        # Initialize state using input_size of the neural network
+        state = np.zeros(self.input_size)
+
+        # Loop function for obtaining the state represented by vehicles' position
+        for vehicle_id in traci.vehicle.getIDList():
+            # Obtain id of each lane and position of the vehicle with offsetting the position
+            lane_id = traci.vehicle.getLaneID(vehicle_id)
+            lane_position = self.lane_length - traci.vehicle.getLanePosition(vehicle_id)
+            valid_car = False
+
+            # Map vehicle's position in meters into cells
+            cell_id = 0
+            while True:
+                if (cell_id + 1) * self.cell_length < lane_position:
+                    cell_id += 1
+                else:
+                    lane_cell = cell_id
+                    break
+
+            # Find the lane where the car is located
+            lane_group = self.lane_ids.get(lane_id)
+
+            if lane_group >= 1 and lane_group <= 7:
+                vehicle_position = int(str(lane_group) + str(lane_cell))
+                valid_car = True
+            elif lane_group == 0:
+                vehicle_position = lane_cell
+                valid_car = True
+
+            if valid_car:
+                state[vehicle_position] = 1
+
+        return state
+
+    # Method for getting waiting time of every car in the incoming lanes
+    def __get_waiting_times(self):
+
+        # Loop function for obtaining the waiting time of each vehicle
+        for vehicle_id in traci.vehicle.getIDList():
+            wait_time = traci.vehicle.getAccumulateWaitingTime(vehicle_id)
+            road_id = traci.vehicle.getRoadID(vehicle_id)
+
+            # Add waiting time information
+            if road_id in self.incoming_roads:
+                self.waiting_times[vehicle_id] = wait_time
             else:
-                # otherwise try to keep green for EW
-                traci.trafficlight.setPhase("0", 2)
-        step += 1
-    traci.close()
-    sys.stdout.flush()
+                if vehicle_id in self.waiting_times:
+                    # Remove vehicles' information if they are not in the incoming roads
+                    del self.waiting_times[vehicle_id]
 
+        total_waiting_time = sum(self.waiting_times.values())
 
-def get_options():
-    optParser = optparse.OptionParser()
-    optParser.add_option("--nogui", action="store_true",
-                         default=False, help="run the commandline version of sumo")
-    options, args = optParser.parse_args()
-    return options
+        return total_waiting_time
 
+    # Method for getting speed information such as mean and maximum speed
+    def __get_speed_information(self):
 
-# this is the main entry point of this script
-if __name__ == "__main__":
-    options = get_options()
+        # Loop function for obtaining the speed information of each vehicle
+        for vehicle_id in traci.vehicle.getIDList():
+            speed = traci.vehicle.getSPeed(vehicle_id)
+            road_id = traci.vehicle.getRoadID(vehicle_id)
 
-    # this script has been called from the command line. It will start sumo as a
-    # server, then connect and run
-    if options.nogui:
-        sumoBinary = checkBinary('sumo')
-    else:
-        sumoBinary = checkBinary('sumo-gui')
+            # Add speed information
+            if road_id in self.incoming_roads:
+                self.speeds[vehicle_id] = speed
+            else:
+                if vehicle_id in self.speeds:
+                    # Remove vehicles' information if they are not in the incoming roads
+                    del self.speeds[vehicle_id]
 
-    # this is the normal way of using traci. sumo is started as a
-    # subprocess and then the python script connects and runs
-    traci.start([sumoBinary, "-c", "data/cross.sumocfg",
-                             "--tripinfo-output", "tripinfo.xml"])
-    run()
+        max_speed = max(self.speeds.values())
+        mean_speed = sum(self.speeds.values()) / len(self.speeds)
+
+        return max_speed, mean_speed
+
+    # Method for computing reward
+    def __reward(self, total_wait, max_speed, mean_speed):
+        # This is tentative reward (design it later...)
+        return total_wait + max_speed + mean_speed
+
+    # Method for resetting the environment
+    def __reset(self):
+        self.steps = 0
+        self.reward = 0
+        self.waiting_times = {}
+        self.speeds = {}
+
+    # Method for getting options for SUMO simulator
+    def __get_options(self):
+        optParser = optparse.OptionParser()
+        optParser.add_option("--nogui", action="store_true", default=False, help="run the commandline version of sumo")
+        options, args = optParser.parse_args()
+
+        return options
