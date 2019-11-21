@@ -21,13 +21,16 @@ import traci
 class TrafficEnvironment:
 
     # Constructor
-    def __init__(self, epsilon, max_steps, input_size, cell_number):
+    def __init__(self, epsilon, max_steps, num_actions, input_size, cell_number, deceleration_th):
         # Initialize global variables
         self.epsilon = epsilon
         self.steps = 0
         self.max_steps = max_steps
         self.waiting_times = {}
         self.speeds = {}
+        self.deceleration_th = deceleration_th
+        self.accelerations = {}
+        self.num_actions = num_actions
 
         self.lane_length = 500
         self.input_size = input_size
@@ -61,13 +64,20 @@ class TrafficEnvironment:
             # Get current state of the intersection
             state_curr = self.__get_state()
 
-            # Obtain waiting time and speed information for computing reward
+            # Obtain waiting time and speed information
             total_wait_curr = self.__get_waiting_times()
             max_speed_curr, mean_speed_curr = self.__get_speed_information()
+            # Calculate reward of previous action
             reward = self.__reward(total_wait_curr, max_speed_curr, mean_speed_curr)
 
             # Select the light phase to activate, based on the current state of the intersection
             action = self.__choose_action(state_curr)
+
+            # Conduct the selected action to transition next state
+
+        # End simulation for one episode
+        print("Total reward: {}".format())
+        traci.close()
 
     # Private method
     # Method for getting state
@@ -132,7 +142,7 @@ class TrafficEnvironment:
 
         # Loop function for obtaining the speed information of each vehicle
         for vehicle_id in traci.vehicle.getIDList():
-            speed = traci.vehicle.getSPeed(vehicle_id)
+            speed = traci.vehicle.getSpeed(vehicle_id)
             road_id = traci.vehicle.getRoadID(vehicle_id)
 
             # Add speed information
@@ -148,6 +158,28 @@ class TrafficEnvironment:
 
         return max_speed, mean_speed
 
+    # Method for getting acceleration information
+    def __get_acceleration(self):
+
+        # Loop function for obtaining the acceleration of each vehicle
+        for vehicle_id in traci.vehicle.getIDList():
+            acceleration = traci.vehicle.getAcceleration(vehicle_id)
+            road_id = traci.vehicle.getRoadID(vehicle_id)
+
+            # Add acceleration information
+            if road_id in self.incoming_roads:
+                # Add deceleration information if it is more than threshold
+                if abs(acceleration) > abs(self.deceleration_th):
+                    self.accelerations[vehicle_id] = acceleration
+            else:
+                if vehicle_id in self.accelerations:
+                    # Remove vehicles' information if they are not in the incoming roads
+                    del self.accelerations[vehicle_id]
+
+        total_deceleration = sum(self.accelerations.values())
+
+        return total_deceleration
+
     # Method for computing reward
     def __reward(self, total_wait, max_speed, mean_speed):
         # This is tentative reward (design it later...)
@@ -158,10 +190,10 @@ class TrafficEnvironment:
         # If function for epsilon-greedy policy
         if random.random() < self.epsilon:
             # Return random action for exploration
-            return random.randint()
+            return random.randint(0, self.num_actions - 1)
         else:
-            # Return best action given the current state (exploitation)
-            return np.argmax()
+            # Return best action given the current state (exploitation) by referencing Q (state, action) value
+            return np.argmax() # Here need Q (state, action) info from RL network
 
     # Method for resetting the environment
     def __reset(self):
@@ -169,6 +201,7 @@ class TrafficEnvironment:
         self.reward = 0
         self.waiting_times = {}
         self.speeds = {}
+        self.accelerations = {}
 
     # Method for getting options for SUMO simulator
     def __get_options(self):
