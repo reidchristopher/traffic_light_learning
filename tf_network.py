@@ -73,9 +73,7 @@ class TFNetwork:
 
         assert (0 < mutation_fraction <= 1)
 
-        for i in range(self.num_hidden_layers + 1):
-
-            layer = self.model.get_layer(index=i)
+        for layer in self.model.layers:
 
             weights = layer.get_weights()
 
