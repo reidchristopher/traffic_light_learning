@@ -65,7 +65,7 @@ class TFNetwork:
             # add output layer
             self.model.add(tf.keras.layers.Dense(output_size, activation='softmax'))
 
-            self.model.compile(optimizer=tf.keras.optimizers.SGD(0.1),
+        self.model.compile(optimizer=tf.keras.optimizers.SGD(0.1),
                                loss='categorical_crossentropy',
                                metrics=['accuracy'])
 
@@ -99,6 +99,18 @@ class TFNetwork:
     def save(self, file_path):
 
         self.model.save(file_path)
+
+    def get_selection(self, input_vector, one_hot=True):
+
+        input_vector = np.ndarray( (1, len(input_vector)), dtype=np.float32)
+
+        # inputs and outputs are 2D arrays
+        output_vector = self.model(input_vector).numpy()[0]
+
+        if one_hot:
+            return output_vector == np.max(output_vector)
+        else:
+            return np.argmax(output_vector)
 
 
 def test():
