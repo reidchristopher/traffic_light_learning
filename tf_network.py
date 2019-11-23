@@ -10,17 +10,17 @@ class TFNetwork:
     @staticmethod
     def from_existing(network):
 
-        return TFNetwork(None, None, None, None, network.model)
+        return TFNetwork(None, None, None, None, original_model=network.model)
 
     @staticmethod
     def from_save(file_path):
 
         model = tf.keras.models.load_model(file_path)
 
-        return TFNetwork(None, None, None, None, model)
+        return TFNetwork(None, None, None, None, original_model=model)
 
     def __init__(self, input_size, output_size, hidden_layer_size, num_hidden_layers,
-                 output_activation='softmax',
+                 output_activation=tf.keras.activations.softmax,
                  original_model=None):
 
         if original_model is not None:
@@ -29,6 +29,7 @@ class TFNetwork:
             self.output_size = original_model.layers[-1].output_shape[-1]
             self.hidden_layer_size = original_model.layers[0].output_shape[-1]
             self.num_hidden_layers = len(original_model.layers) - 1
+            self.output_activation = original_model.layers[-1]
 
             self.model = tf.keras.models.clone_model(original_model)
 
@@ -51,6 +52,7 @@ class TFNetwork:
             self.output_size = output_size
             self.hidden_layer_size = hidden_layer_size
             self.num_hidden_layers = num_hidden_layers
+            self.output_activation = output_activation
 
             self.model = tf.keras.Sequential()
 
@@ -104,18 +106,20 @@ class TFNetwork:
 
         self.model.save(file_path)
 
-    def get_selection(self, input_vector, one_hot=True):
+    def get_output(self, input_vector, one_hot=True):
 
-        input_vector = np.ndarray( (1, len(input_vector)), dtype=np.float32)
+        input_vector = np.reshape(input_vector, (1, len(input_vector)))
 
         # inputs and outputs are 2D arrays
-        output_vector = self.model(input_vector).numpy()[0]
+        output_vector = self.model(input_vector)[0]
 
-        if one_hot:
-            return output_vector == np.max(output_vector)
+        if self.output_activation == tf.keras.activations.softmax:
+            if one_hot:
+                return output_vector == np.max(output_vector)
+            else:
+                return np.argmax(output_vector)
         else:
-            return np.argmax(output_vector)
-
+            return output_vector
 
 def test():
     try:

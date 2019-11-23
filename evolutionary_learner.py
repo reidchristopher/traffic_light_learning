@@ -19,6 +19,8 @@ class EvolutionaryLearner:
 
     def generate_mutations(self, mutation_fraction, stddev):
 
+        assert not self.ready_for_selection
+
         mutations = [None for _ in range(self.population_size)]
 
         for i, network in enumerate(self.networks):
@@ -88,7 +90,7 @@ class EvolutionaryLearner:
 
     def get_selection(self, x, network_index, get_one_hot=False):
 
-        return self.networks[network_index].get_selection(x, one_hot=get_one_hot)
+        return self.networks[network_index].get_output(x, one_hot=get_one_hot)
 
 
 def test():
