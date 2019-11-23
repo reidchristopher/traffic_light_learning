@@ -19,7 +19,9 @@ class TFNetwork:
 
         return TFNetwork(None, None, None, None, model)
 
-    def __init__(self, input_size, output_size, hidden_layer_size, num_hidden_layers, original_model=None):
+    def __init__(self, input_size, output_size, hidden_layer_size, num_hidden_layers,
+                 output_activation='softmax',
+                 original_model=None):
 
         if original_model is not None:
 
@@ -63,7 +65,7 @@ class TFNetwork:
                 self.model.add(tf.keras.layers.Dense(hidden_layer_size, input_shape=input_shape, activation='relu'))
 
             # add output layer
-            self.model.add(tf.keras.layers.Dense(output_size, activation='softmax'))
+            self.model.add(tf.keras.layers.Dense(output_size, activation=output_activation))
 
         self.model.compile(optimizer=tf.keras.optimizers.SGD(0.1),
                                loss='categorical_crossentropy',
