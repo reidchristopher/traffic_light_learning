@@ -86,6 +86,10 @@ class EvolutionaryLearner:
 
         return scores
 
+    def get_selection(self, x, network_index, get_one_hot=False):
+
+        return self.networks[network_index].get_selection(x, one_hot=get_one_hot)
+
 
 def test():
 
