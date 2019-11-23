@@ -107,7 +107,8 @@ class TrafficEnvironment:
     def __get_state(self):
 
         # Initialize state using input_size of the neural network
-        state = np.zeros(self.input_size)
+        state_position = np.zeros(int(str(self.lane_ids.get('Ni_2')) + str(self.cell_number)))
+        state_speed = np.zeros(int(str(self.lane_ids.get('Ni_2')) + str(self.cell_number)))
 
         # Loop function for obtaining the state represented by vehicles' position
         for vehicle_id in traci.vehicle.getIDList():
@@ -137,7 +138,10 @@ class TrafficEnvironment:
                 valid_car = True
 
             if valid_car:
-                state[vehicle_position] = speed
+                state_position[vehicle_position] = 1
+                state_speed[vehicle_position] = speed
+
+        state = np.hstack((state_position, state_speed))
 
         return state
 
