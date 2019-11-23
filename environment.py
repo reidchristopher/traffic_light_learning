@@ -17,6 +17,17 @@ else:
 from sumolib import checkBinary
 import traci
 
+# Define traffic light phase code based on cross.add.xml
+PHASE_NS_G, PHASE_NS_Y = 0, 1
+PHASE_EW_G, PHASE_EW_Y = 2, 3
+PHASE_NSL_G, PHASE_NSL_Y = 4, 5
+PHASE_EWL_G, PHASE_EWL_Y = 6, 7
+PHASE_WL_G, PHASE_WL_Y = 8, 9
+PHASE_EL_G, PHASE_EL_Y = 10, 11
+PHASE_SL_G, PHASE_SL_Y = 12, 13
+PHASE_NL_G, PHASE_NL_Y = 14, 15
+PHASE_EWA_G, PHASE_EWA_Y = 16, 17
+PHASE_NSA_G, PHASE_NSA_Y = 18, 19
 
 class TrafficEnvironment:
 
@@ -31,15 +42,16 @@ class TrafficEnvironment:
         self.deceleration_th = deceleration_th
         self.accelerations = {}
         self.num_actions = num_actions
+        self.REWARD = 0
 
-        self.lane_length = 500
+        self.lane_length = 50
         self.input_size = input_size
-        self.cell_number = cell_number
+        self.cell_number = cell_number # The number of cell
         self.cell_length = self.lane_length / self.cell_number
-        self.lane_ids = {'Wi_0': 0, 'Wi_1': 0, 'Wi_2': 1,
-                         'Ei_0': 2, 'Ei_1': 2, 'Ei_2': 3,
-                         'Si_0': 4, 'Si_1': 4, 'Si_2': 5,
-                         'Ni_0': 6, 'Ni_1': 6, 'Ni_2': 7}
+        self.lane_ids = {'Wi_0': 0, 'Wi_1': 1, 'Wi_2': 2,
+                         'Ei_0': 3, 'Ei_1': 4, 'Ei_2': 5,
+                         'Si_0': 6, 'Si_1': 7, 'Si_2': 8,
+                         'Ni_0': 10, 'Ni_1': 11, 'Ni_2': 12}
         self.incoming_roads = ['Wi', 'Ei', 'Si', 'Ni']
 
     # Public method
@@ -58,6 +70,7 @@ class TrafficEnvironment:
 
         # Reset variables for RL
         self.__reset()
+        total_wait_prev = 0
 
         # Loop function for processing steps during one episode
         while self.steps < self.max_steps:
@@ -68,15 +81,25 @@ class TrafficEnvironment:
             total_wait_curr = self.__get_waiting_times()
             max_speed_curr, mean_speed_curr = self.__get_speed_information()
             # Calculate reward of previous action
-            reward = self.__reward(total_wait_curr, max_speed_curr, mean_speed_curr)
+            reward = self.__reward(total_wait_curr, total_wait_prev, reward_type="waiting_time")
 
             # Select the light phase to activate, based on the current state of the intersection
             action = self.__choose_action(state_curr)
 
             # Conduct the selected action to transition next state
+            if self.steps != 0 and action_prev != action:
+                self.__set_yellow_phase(action_prev)
+            else:
+                self.__set_green_phase(action)
+
+            state_prev = state_curr
+            action_prev = action
+            total_wait_prev = total_wait_curr
+            if reward < 0:
+                self.REWARD += reward
 
         # End simulation for one episode
-        print("Total reward: {}".format())
+        print("Total reward: {}".format(self.REWARD))
         traci.close()
 
     # Private method
@@ -91,6 +114,7 @@ class TrafficEnvironment:
             # Obtain id of each lane and position of the vehicle with offsetting the position
             lane_id = traci.vehicle.getLaneID(vehicle_id)
             lane_position = self.lane_length - traci.vehicle.getLanePosition(vehicle_id)
+            speed = traci.vehicle.getSpeed(vehicle_id)
             valid_car = False
 
             # Map vehicle's position in meters into cells
@@ -113,7 +137,7 @@ class TrafficEnvironment:
                 valid_car = True
 
             if valid_car:
-                state[vehicle_position] = 1
+                state[vehicle_position] = speed
 
         return state
 
@@ -181,9 +205,10 @@ class TrafficEnvironment:
         return total_deceleration
 
     # Method for computing reward
-    def __reward(self, total_wait, max_speed, mean_speed):
-        # This is tentative reward (design it later...)
-        return total_wait + max_speed + mean_speed
+    def __reward(self, total_wait_curr, total_wait_prev, reward_type):
+        if reward_type == "waiting_time":
+            reward = total_wait_prev - total_wait_curr
+        return reward
 
     # Method for selecting the action
     def __choose_action(self, state):
@@ -195,13 +220,22 @@ class TrafficEnvironment:
             # Return best action given the current state (exploitation) by referencing Q (state, action) value
             return np.argmax() # Here need Q (state, action) info from RL network
 
+    # Method for setting yellow light phase
+    def __set_yellow_phase(self, action_prev):
+        yellow_phase = action_prev + 1
+        traci.trafficlight.setPhase("C", yellow_phase)
+
+    # Method for setting green light phase
+    def __set_green_phase(self, action):
+        traci.trafficlight.setPhase("C", action*2) # Action is multiplied by 2 because of the existence of yellow phase
+
     # Method for resetting the environment
     def __reset(self):
         self.steps = 0
-        self.reward = 0
         self.waiting_times = {}
         self.speeds = {}
         self.accelerations = {}
+        self.REWARD = 0
 
     # Method for getting options for SUMO simulator
     def __get_options(self):
