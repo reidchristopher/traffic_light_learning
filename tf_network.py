@@ -98,6 +98,8 @@ class TFNetwork:
 
     def save(self, file_path):
 
+        assert file_path[-3:] == '.h5'
+
         self.model.save(file_path)
 
     def get_selection(self, input_vector, one_hot=True):
@@ -114,31 +116,35 @@ class TFNetwork:
 
 
 def test():
-    # runs a test of the neural network and training on the MNIST dataset
-    example = TFNetwork(28 * 28, 10, 100, 3)
+    try:
+        # runs a test of the neural network and training on the MNIST dataset
+        example = TFNetwork(28 * 28, 10, 100, 3)
 
-    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+        (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 
-    y_train = tf.one_hot(y_train, 10).numpy()
-    y_test = tf.one_hot(y_test, 10).numpy()
+        y_train = tf.one_hot(y_train, 10).numpy()
+        y_test = tf.one_hot(y_test, 10).numpy()
 
-    # Preprocess the data (these are Numpy arrays)
-    x_train = x_train.reshape(60000, 784).astype('float32') / 255
-    x_test = x_test.reshape(10000, 784).astype('float32') / 255
+        # Preprocess the data (these are Numpy arrays)
+        x_train = x_train.reshape(60000, 784).astype('float32') / 255
+        x_test = x_test.reshape(10000, 784).astype('float32') / 255
 
-    y_train = y_train.astype('float32')
-    y_test = y_test.astype('float32')
+        y_train = y_train.astype('float32')
+        y_test = y_test.astype('float32')
 
-    epochs = 10
-    batch_size = 100
+        epochs = 10
+        batch_size = 100
 
-    example.train(x_train, y_train, epochs, batch_size)
+        example.train(x_train, y_train, epochs, batch_size)
 
-    result = example.model.evaluate(x_test, y_test, batch_size=batch_size, verbose=False)
+        result = example.model.evaluate(x_test, y_test, batch_size=batch_size, verbose=False)
 
-    print("Test results")
-    print("Loss: %.4f" % result[0])
-    print("Accuracy: %.4f" % result[1])
+        print("Test results")
+        print("Loss: %.4f" % result[0])
+        print("Accuracy: %.4f" % result[1])
+
+    except KeyboardInterrupt:
+        print("Test interrupted")
 
 
 if __name__ == "__main__":

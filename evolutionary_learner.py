@@ -86,56 +86,58 @@ class EvolutionaryLearner:
 
         return scores
 
+
 def test():
-    example = EvolutionaryLearner(10, 28 * 28, 10, 100, 3)
 
-    import tensorflow as tf
-    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+    try:
+        example = EvolutionaryLearner(10, 28 * 28, 10, 10, 3)
 
-    y_train = tf.one_hot(y_train, 10).numpy()
-    y_test = tf.one_hot(y_test, 10).numpy()
+        import tensorflow as tf
+        (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 
-    # Preprocess the data (these are Numpy arrays)
-    x_train = x_train.reshape(60000, 784).astype('float32') / 255
-    x_test = x_test.reshape(10000, 784).astype('float32') / 255
+        y_train = tf.one_hot(y_train, 10).numpy()
+        y_test = tf.one_hot(y_test, 10).numpy()
 
-    y_train = y_train.astype('float32')
-    y_test = y_test.astype('float32')
+        # Preprocess the data (these are Numpy arrays)
+        x_train = x_train.reshape(60000, 784).astype('float32') / 255
+        x_test = x_test.reshape(10000, 784).astype('float32') / 255
 
-    epochs = 100
-    batch_size = 10000
+        y_train = y_train.astype('float32')
+        y_test = y_test.astype('float32')
 
-    accuracy = np.max(example.evaluate(x_test, y_test, batch_size))
+        epochs = 10
+        batch_size = 10000
 
-    print("Pre-training results")
-    print("Accuracy: %.4f" % accuracy)
-
-    from math import ceil
-    num_batches = ceil(x_train.shape[0] / batch_size)
-
-    for epoch in range(epochs):
-
-        print("Epoch %d" % epoch)
-
-        for i in range(num_batches):
-
-            print("\tBatch %d" % i)
-            start_index = i * batch_size
-            end_index = min((i + 1) * batch_size, x_train.shape[0])
-
-            example.generate_mutations(0.2, 1.0 )
-
-            scores = example.evaluate(x_train[start_index:end_index], y_train[start_index:end_index], batch_size=batch_size)
-
-            example.select(scores, 0.1)
-
-        print("New accuracies")
+        print("Pre-training accuracies")
         print(example.evaluate(x_test, y_test, batch_size))
 
-    accuracy = np.max(example.evaluate(x_test, y_test, batch_size))
+        from math import ceil
+        num_batches = ceil(x_train.shape[0] / batch_size)
 
-    print("Post training results")
-    print("Accuracy: %.4f" % accuracy)
+        for epoch in range(epochs):
+
+            print("Epoch %d" % epoch)
+
+            for i in range(num_batches):
+
+                print("\tBatch %d" % i)
+                start_index = i * batch_size
+                end_index = min((i + 1) * batch_size, x_train.shape[0])
+
+                example.generate_mutations(0.10, 0.10)
+
+                scores = example.evaluate(x_train[start_index:end_index], y_train[start_index:end_index], batch_size=batch_size)
+
+                example.select(scores, 0.1)
+
+            print("New accuracies")
+            print(example.evaluate(x_test, y_test, batch_size))
+
+        print("Post training accuracies")
+        print(example.evaluate(x_test, y_test, batch_size))
+
+    except KeyboardInterrupt:
+        print("\n\rTest interrupted")
 
 
 if __name__ == "__main__":
