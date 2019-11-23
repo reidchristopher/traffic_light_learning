@@ -32,7 +32,7 @@ PHASE_NSA_G, PHASE_NSA_Y = 18, 19
 class TrafficEnvironment:
 
     # Constructor
-    def __init__(self, epsilon, max_steps, num_actions, input_size, cell_number, deceleration_th):
+    def __init__(self, epsilon, max_steps, green_duration, yellow_duration, num_actions, input_size, cell_number, deceleration_th):
         # Initialize global variables
         self.epsilon = epsilon
         self.steps = 0
@@ -44,6 +44,9 @@ class TrafficEnvironment:
         self.num_actions = num_actions
         self.REWARD = 0
 
+        self.green_duration = green_duration
+        self.yellow_duration = yellow_duration
+        self.sum_intersection_queue = 0
         self.lane_length = 50
         self.input_size = input_size
         self.cell_number = cell_number # The number of cell
@@ -76,12 +79,12 @@ class TrafficEnvironment:
         while self.steps < self.max_steps:
             # Get current state of the intersection
             state_curr = self.__get_state()
-
             # Obtain waiting time and speed information
             total_wait_curr = self.__get_waiting_times()
-            max_speed_curr, mean_speed_curr = self.__get_speed_information()
             # Calculate reward of previous action
             reward = self.__reward(total_wait_curr, total_wait_prev, reward_type="waiting_time")
+
+            print(reward)
 
             # Select the light phase to activate, based on the current state of the intersection
             action = self.__choose_action(state_curr)
@@ -89,8 +92,10 @@ class TrafficEnvironment:
             # Conduct the selected action to transition next state
             if self.steps != 0 and action_prev != action:
                 self.__set_yellow_phase(action_prev)
+                self.__simulate(self.yellow_duration)
             else:
                 self.__set_green_phase(action)
+                self.__simulate(self.green_duration)
 
             state_prev = state_curr
             action_prev = action
@@ -103,6 +108,20 @@ class TrafficEnvironment:
         traci.close()
 
     # Private method
+    # Method for handling the correct number of steps to simulate
+    def __simulate(self, duration):
+
+        if (self.steps + duration) >= self.max_steps:
+            # Adjust duration for avoiding more steps than the maximum number of steps
+            duration = self.max_steps - self.steps
+        self.steps = self.steps + duration
+        while duration > 0:
+            # Simulate one step in sumo
+            traci.simulationStep()
+            duration -= 1
+            intersection_queue = self.__get_statistics()
+            self.sum_intersection_queue += intersection_queue
+
     # Method for getting state
     def __get_state(self):
 
@@ -128,7 +147,10 @@ class TrafficEnvironment:
                     break
 
             # Find the lane where the car is located
-            lane_group = self.lane_ids.get(lane_id)
+            if lane_id in self.lane_ids:
+                lane_group = self.lane_ids.get(lane_id)
+            else:
+                lane_group = -1 # Dummy value for running
 
             if lane_group >= 1 and lane_group <= 7:
                 vehicle_position = int(str(lane_group) + str(lane_cell))
@@ -150,7 +172,7 @@ class TrafficEnvironment:
 
         # Loop function for obtaining the waiting time of each vehicle
         for vehicle_id in traci.vehicle.getIDList():
-            wait_time = traci.vehicle.getAccumulateWaitingTime(vehicle_id)
+            wait_time = traci.vehicle.getAccumulatedWaitingTime(vehicle_id)
             road_id = traci.vehicle.getRoadID(vehicle_id)
 
             # Add waiting time information
@@ -208,6 +230,18 @@ class TrafficEnvironment:
 
         return total_deceleration
 
+    # Method for getting statistics of the simulation of one step
+    def __get_statistics(self):
+
+        # Get the number of halting car in each edge
+        halt_W = traci.edge.getLastStepHaltingNumber("Wi")
+        halt_E = traci.edge.getLastStepHaltingNumber("Ei")
+        halt_S = traci.edge.getLastStepHaltingNumber("Si")
+        halt_N = traci.edge.getLastStepHaltingNumber("Ni")
+        queue = halt_W + halt_E + halt_S + halt_N
+
+        return queue
+
     # Method for computing reward
     def __reward(self, total_wait_curr, total_wait_prev, reward_type):
         if reward_type == "waiting_time":
@@ -222,7 +256,7 @@ class TrafficEnvironment:
             return random.randint(0, self.num_actions - 1)
         else:
             # Return best action given the current state (exploitation) by referencing Q (state, action) value
-            return np.argmax() # Here need Q (state, action) info from RL network
+            return random.randint(0, self.num_actions - 1) # Here need Q (state, action) info from RL network
 
     # Method for setting yellow light phase
     def __set_yellow_phase(self, action_prev):
@@ -240,6 +274,7 @@ class TrafficEnvironment:
         self.speeds = {}
         self.accelerations = {}
         self.REWARD = 0
+        self.sum_intersection_queue = 0
 
     # Method for getting options for SUMO simulator
     def __get_options(self):
@@ -248,3 +283,7 @@ class TrafficEnvironment:
         options, args = optParser.parse_args()
 
         return options
+
+if __name__ == '__main__':
+    traffic_environment = TrafficEnvironment(0.1, 5400, 10, 4, 10, None, 5, 0.5)
+    traffic_environment.run(10)
