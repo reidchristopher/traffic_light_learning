@@ -29,7 +29,7 @@ class TFNetwork:
             self.output_size = original_model.layers[-1].output_shape[-1]
             self.hidden_layer_size = original_model.layers[0].output_shape[-1]
             self.num_hidden_layers = len(original_model.layers) - 1
-            self.output_activation = original_model.layers[-1]
+            self.output_activation = original_model.layers[-1].activation
 
             self.model = tf.keras.models.clone_model(original_model)
 
