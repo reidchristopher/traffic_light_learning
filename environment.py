@@ -80,7 +80,7 @@ class TrafficEnvironment:
 
         # Loop function for processing steps during one episode
         while self.steps < self.max_steps:
-            # Reset state phase if the series of actions are different
+            # Reset state phase if the series of actions of the traffic light are different
             if action_prev_prev != action_prev:
                 state_phase_prev = np.zeros(int(self.num_actions))
 
@@ -294,5 +294,6 @@ class TrafficEnvironment:
         return options
 
 if __name__ == '__main__':
+    # Below code is example for running the simulator
     traffic_environment = TrafficEnvironment(0.1, 5400, 10, 4, 10, None, 5, 0.5)
     traffic_environment.run(10)
