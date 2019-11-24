@@ -26,9 +26,9 @@ class EvolutionaryLearner:
                              for _ in range(population_size)]
 
         else:
-            self.population_size = len(networks)
+            self.population_size = len(starting_networks)
 
-            self.networks = [TFNetwork.from_existing(network) for network in networks]
+            self.networks = [TFNetwork.from_existing(network) for network in starting_networks]
 
     def generate_mutations(self, mutation_fraction, stddev):
 
