@@ -54,7 +54,7 @@ class TrafficEnvironment:
         self.lane_ids = {'Wi_0': 0, 'Wi_1': 1, 'Wi_2': 2,
                          'Ei_0': 3, 'Ei_1': 4, 'Ei_2': 5,
                          'Si_0': 6, 'Si_1': 7, 'Si_2': 8,
-                         'Ni_0': 10, 'Ni_1': 11, 'Ni_2': 12}
+                         'Ni_0': 9, 'Ni_1': 10, 'Ni_2': 11}
         self.incoming_roads = ['Wi', 'Ei', 'Si', 'Ni']
 
     # Public method
@@ -73,13 +73,19 @@ class TrafficEnvironment:
 
         # Reset variables for RL
         self.__reset()
-        action_prev = -1
+        action_prev = 0
+        action_prev_prev = None
         total_wait_prev = 0
+        state_phase_prev = np.zeros(int(self.num_actions))
 
         # Loop function for processing steps during one episode
         while self.steps < self.max_steps:
+            # Reset state phase if the series of actions are different
+            if action_prev_prev != action_prev:
+                state_phase_prev = np.zeros(int(self.num_actions))
+
             # Get current state of the intersection
-            state_curr = self.__get_state()
+            state_curr, state_phase_curr = self.__get_state(action_prev, state_phase_prev)
             # Obtain waiting time and speed information
             total_wait_curr = self.__get_waiting_times()
             # Calculate reward of previous action
@@ -88,14 +94,18 @@ class TrafficEnvironment:
             # Select the light phase to activate, based on the current state of the intersection
             action = self.__choose_action(state_curr)
 
-            # Conduct the selected action to transition next state
+            # Conduct yellow phase action before performing the next action
             if self.steps != 0 and action_prev != action:
                 self.__set_yellow_phase(action_prev)
                 self.__simulate(self.yellow_duration)
-
+            # Conduct green phase action
             self.__set_green_phase(action)
             self.__simulate(self.green_duration)
 
+            # Set values for the next step
+            state_phase_prev = state_phase_curr
+            if self.steps != 0:
+                action_prev_prev = action_prev
             state_prev = state_curr
             action_prev = action
             total_wait_prev = total_wait_curr
@@ -122,11 +132,11 @@ class TrafficEnvironment:
             self.sum_intersection_queue += intersection_queue
 
     # Method for getting state
-    def __get_state(self):
+    def __get_state(self, action, state_phase):
 
         # Initialize state using input_size of the neural network
-        state_position = np.zeros(int(str(self.lane_ids.get('Ni_2')) + str(self.cell_number)))
-        state_speed = np.zeros(int(str(self.lane_ids.get('Ni_2')) + str(self.cell_number)))
+        state_position = np.zeros((int(self.lane_ids.get('Ni_2') + 1) * self.cell_number))
+        state_speed = np.zeros((int(self.lane_ids.get('Ni_2') + 1) * self.cell_number))
 
         # Loop function for obtaining the state represented by vehicles' position
         for vehicle_id in traci.vehicle.getIDList():
@@ -151,20 +161,20 @@ class TrafficEnvironment:
             else:
                 lane_group = -1 # Dummy value for running
 
-            if lane_group >= 1 and lane_group <= 7:
-                vehicle_position = int(str(lane_group) + str(lane_cell))
-                valid_car = True
-            elif lane_group == 0:
-                vehicle_position = lane_cell
+            if lane_group != -1:
+                vehicle_position = self.cell_number * lane_group + lane_cell
                 valid_car = True
 
             if valid_car:
                 state_position[vehicle_position] = 1
                 state_speed[vehicle_position] = speed
 
-        state = np.hstack((state_position, state_speed))
+        # Add the number to represent state of the traffic light
+        state_phase[action] += 1
 
-        return state
+        state = np.hstack((state_position, state_speed, state_phase))
+
+        return state, state_phase
 
     # Method for getting waiting time of every car in the incoming lanes
     def __get_waiting_times(self):
