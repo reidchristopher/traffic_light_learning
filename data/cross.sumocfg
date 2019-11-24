@@ -4,8 +4,8 @@
 
     <input>
         <net-file value="cross.net.xml"/>
-        <route-files value="cross_ref.rou.xml"/>
-        <additional-files value="cross.det.xml,cross.add.xml"/>
+        <route-files value="cross.rou.xml"/>
+        <additional-files value="cross.add.xml"/>
     </input>
 
     <time>

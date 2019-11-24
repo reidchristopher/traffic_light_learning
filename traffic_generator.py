@@ -14,7 +14,6 @@ class TrafficGenerator:
         # the generation of cars is distributed according to a weibull distribution
         timings = np.random.weibull(2, self._n_cars_generated)
         timings = np.sort(timings)
-        print(timings)
 
         # reshape the distribution to fit the interval 0:max_steps
         car_gen_steps = []
