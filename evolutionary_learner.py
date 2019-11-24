@@ -8,14 +8,27 @@ import tensorflow as tf
 
 class EvolutionaryLearner:
 
-    def __init__(self, population_size, input_size, output_size, hidden_layer_size, num_hidden_layers):
+    @staticmethod
+    def from_existing(networks):
+
+        return EvolutionaryLearner(None, None, None, None, starting_networks=networks)
+
+    def __init__(self, population_size, input_size, output_size, hidden_layer_size, num_hidden_layers,
+                 starting_networks=None):
 
         self.ready_for_selection = False
 
-        self.population_size = population_size
+        if starting_networks is None:
 
-        self.networks = [TFNetwork(input_size, output_size, hidden_layer_size, num_hidden_layers)
-                         for _ in range(population_size)]
+            self.population_size = population_size
+
+            self.networks = [TFNetwork(input_size, output_size, hidden_layer_size, num_hidden_layers)
+                             for _ in range(population_size)]
+
+        else:
+            self.population_size = len(networks)
+
+            self.networks = [TFNetwork.from_existing(network) for network in networks]
 
     def generate_mutations(self, mutation_fraction, stddev):
 
