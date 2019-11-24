@@ -6,6 +6,7 @@ import random
 
 import optparse
 import numpy as np
+import pickle
 
 # Import libraries for the traffic light simulator
 if 'SUMO_HOME' in os.environ:
@@ -43,6 +44,7 @@ class TrafficEnvironment:
         self.accelerations = {}
         self.num_actions = num_actions
         self.REWARD = 0
+        self.samples = []
 
         self.green_duration = green_duration
         self.yellow_duration = yellow_duration
@@ -94,6 +96,9 @@ class TrafficEnvironment:
             # Calculate reward of previous action
             reward = self.__reward(total_wait_curr, total_wait_prev, reward_type="waiting_time")
 
+            # Memorize state, action, and reward
+            self.__memorizer((state_curr, action_prev, reward))
+
             # Select the light phase to activate, based on the current state of the intersection
             if self.policy_based:
                 # Select the next action based on the policy (traditional, EA, and RL)
@@ -124,8 +129,16 @@ class TrafficEnvironment:
         print("Total reward: {}".format(self.REWARD))
         traci.close()
 
+    # Method for recording state, action, and reward at every steps in one episode
+    def recorder(self, file_name):
+        with open(file_name, 'wb') as f:
+            pickle.dump(self.samples, f)
+
     # Private method
     # Method for handling the correct number of steps to simulate
+    def __memorizer(self, sample):
+        self.samples.append(sample)
+
     def __simulate(self, duration):
 
         if (self.steps + duration) >= self.max_steps:
@@ -294,4 +307,5 @@ class TrafficEnvironment:
 if __name__ == '__main__':
     # Below code is example for running the simulator
     traffic_environment = TrafficEnvironment(0.1, 5400, 10, 4, 10, None, 5, 0.5, None, False)
-    traffic_environment.run(10)
+    traffic_environment.run(1)
+    traffic_environment.recorder("sample.pickle")
