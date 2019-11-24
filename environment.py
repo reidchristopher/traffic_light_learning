@@ -73,6 +73,7 @@ class TrafficEnvironment:
 
         # Reset variables for RL
         self.__reset()
+        action_prev = -1
         total_wait_prev = 0
 
         # Loop function for processing steps during one episode
@@ -84,8 +85,6 @@ class TrafficEnvironment:
             # Calculate reward of previous action
             reward = self.__reward(total_wait_curr, total_wait_prev, reward_type="waiting_time")
 
-            print(reward)
-
             # Select the light phase to activate, based on the current state of the intersection
             action = self.__choose_action(state_curr)
 
@@ -93,9 +92,9 @@ class TrafficEnvironment:
             if self.steps != 0 and action_prev != action:
                 self.__set_yellow_phase(action_prev)
                 self.__simulate(self.yellow_duration)
-            else:
-                self.__set_green_phase(action)
-                self.__simulate(self.green_duration)
+
+            self.__set_green_phase(action)
+            self.__simulate(self.green_duration)
 
             state_prev = state_curr
             action_prev = action
@@ -260,7 +259,7 @@ class TrafficEnvironment:
 
     # Method for setting yellow light phase
     def __set_yellow_phase(self, action_prev):
-        yellow_phase = action_prev + 1
+        yellow_phase = action_prev*2 + 1
         traci.trafficlight.setPhase("C", yellow_phase)
 
     # Method for setting green light phase
