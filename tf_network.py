@@ -106,20 +106,30 @@ class TFNetwork:
 
         self.model.save(file_path)
 
-    def get_output(self, input_vector, one_hot=True):
+    def get_selection(self, input_vector, one_hot=True):
+
+        assert(self.output_activation == tf.keras.activations.softmax)
 
         input_vector = np.reshape(input_vector, (1, len(input_vector)))
 
         # inputs and outputs are 2D arrays
         output_vector = self.model(input_vector)[0]
 
-        if self.output_activation == tf.keras.activations.softmax:
-            if one_hot:
-                return output_vector == np.max(output_vector)
-            else:
-                return np.argmax(output_vector)
+        if one_hot:
+            return output_vector == np.max(output_vector)
         else:
-            return output_vector
+            return np.argmax(output_vector)
+
+    def get_output(self, input_vector):
+
+        assert(self.output_activation == tf.keras.activations.linear)
+
+        input_vector = np.reshape(input_vector, (1, len(input_vector)))
+
+        # inputs and outputs are 2D arrays
+        output_vector = self.model(input_vector)[0]
+
+        return output_vector
 
 def test():
     try:
