@@ -32,7 +32,7 @@ PHASE_NSA_G, PHASE_NSA_Y = 18, 19
 class TrafficEnvironment:
 
     # Constructor
-    def __init__(self, epsilon, max_steps, green_duration, yellow_duration, num_actions, input_size, cell_number, deceleration_th):
+    def __init__(self, epsilon, max_steps, green_duration, yellow_duration, num_actions, input_size, cell_number, deceleration_th, policy, policy_based):
         # Initialize global variables
         self.epsilon = epsilon
         self.steps = 0
@@ -56,6 +56,9 @@ class TrafficEnvironment:
                          'Si_0': 6, 'Si_1': 7, 'Si_2': 8,
                          'Ni_0': 9, 'Ni_1': 10, 'Ni_2': 11}
         self.incoming_roads = ['Wi', 'Ei', 'Si', 'Ni']
+
+        self.policy = policy
+        self.policy_based = policy_based # True or False whether the action is selected based on some kind of policy
 
     # Public method
     # Method for running simulation of one episode
@@ -92,7 +95,12 @@ class TrafficEnvironment:
             reward = self.__reward(total_wait_curr, total_wait_prev, reward_type="waiting_time")
 
             # Select the light phase to activate, based on the current state of the intersection
-            action = self.__choose_action(state_curr)
+            if self.policy_based:
+                # Select the next action based on the policy (traditional, EA, and RL)
+                action = self.policy.get_selection(state_curr)
+            else:
+                # Select the next action randomly if there is no policy
+                action = random.randint(0, self.num_actions - 1)
 
             # Conduct yellow phase action before performing the next action
             if self.steps != 0 and action_prev != action:
@@ -257,16 +265,6 @@ class TrafficEnvironment:
             reward = total_wait_prev - total_wait_curr
         return reward
 
-    # Method for selecting the action
-    def __choose_action(self, state):
-        # If function for epsilon-greedy policy
-        if random.random() < self.epsilon:
-            # Return random action for exploration
-            return random.randint(0, self.num_actions - 1)
-        else:
-            # Return best action given the current state (exploitation) by referencing Q (state, action) value
-            return random.randint(0, self.num_actions - 1) # Here need Q (state, action) info from RL network
-
     # Method for setting yellow light phase
     def __set_yellow_phase(self, action_prev):
         yellow_phase = action_prev*2 + 1
@@ -295,5 +293,5 @@ class TrafficEnvironment:
 
 if __name__ == '__main__':
     # Below code is example for running the simulator
-    traffic_environment = TrafficEnvironment(0.1, 5400, 10, 4, 10, None, 5, 0.5)
+    traffic_environment = TrafficEnvironment(0.1, 5400, 10, 4, 10, None, 5, 0.5, None, False)
     traffic_environment.run(10)
