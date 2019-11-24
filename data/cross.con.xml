@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<connections xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/connections_file.xsd">
+
+	<connection from="Wi" to="No" fromLane="2" toLane="1"/>
+	<connection from="Wi" to="No" fromLane="2" toLane="0"/>
+	<connection from="Wi" to="Eo" fromLane="1" toLane="1"/>
+	<connection from="Wi" to="Eo" fromLane="0" toLane="0"/>
+	<connection from="Wi" to="So" fromLane="0" toLane="1"/>
+	<connection from="Wi" to="So" fromLane="0" toLane="0"/>
+
+	<connection from="Ei" to="So" fromLane="2" toLane="1"/>
+	<connection from="Ei" to="So" fromLane="2" toLane="0"/>
+	<connection from="Ei" to="Wo" fromLane="1" toLane="1"/>
+	<connection from="Ei" to="Wo" fromLane="0" toLane="0"/>
+	<connection from="Ei" to="No" fromLane="0" toLane="1"/>
+	<connection from="Ei" to="No" fromLane="0" toLane="0"/>
+
+	<connection from="Si" to="Wo" fromLane="2" toLane="1"/>
+	<connection from="Si" to="Wo" fromLane="2" toLane="0"/>
+	<connection from="Si" to="No" fromLane="1" toLane="1"/>
+	<connection from="Si" to="No" fromLane="0" toLane="0"/>
+	<connection from="Si" to="Eo" fromLane="0" toLane="1"/>
+	<connection from="Si" to="Eo" fromLane="0" toLane="0"/>
+
+	<connection from="Ni" to="Eo" fromLane="2" toLane="1"/>
+	<connection from="Ni" to="Eo" fromLane="2" toLane="0"/>
+	<connection from="Ni" to="So" fromLane="1" toLane="1"/>
+	<connection from="Ni" to="So" fromLane="0" toLane="0"/>
+	<connection from="Ni" to="Wo" fromLane="0" toLane="1"/>
+	<connection from="Ni" to="Wo" fromLane="0" toLane="0"/>
+
+</connections>

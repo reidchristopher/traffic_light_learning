@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edges xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/edges_file.xsd">
+
+   <edge id="Wi" from="W" to="C" numLanes="3" speed="19.444" />
+   <edge id="Wo" from="C" to="W" numLanes="2" speed="11.111" />
+
+   <edge id="Ei" from="E" to="C" numLanes="3" speed="19.444" />
+   <edge id="Eo" from="C" to="E" numLanes="2" speed="11.111" />
+
+   <edge id="Si" from="S" to="C" numLanes="3" speed="19.444" />
+   <edge id="So" from="C" to="S" numLanes="2" speed="11.111" />
+
+   <edge id="Ni" from="N" to="C" numLanes="3" speed="19.444" />
+   <edge id="No" from="C" to="N" numLanes="2" speed="11.111" />
+
+   <edge id="EWi" from="W" to="EW" numLanes="2" speed="19.444" />
+   <edge id="EWo" from="EW" to="W" numLanes="3" speed="11.111" />
+
+   <edge id="EEi" from="E" to="EE" numLanes="2" speed="19.444" />
+   <edge id="EEo" from="EE" to="E" numLanes="3" speed="11.111" />
+
+   <edge id="ESi" from="S" to="ES" numLanes="2" speed="19.444" />
+   <edge id="ESo" from="ES" to="S" numLanes="3" speed="11.111" />
+
+   <edge id="ENi" from="N" to="EN" numLanes="2" speed="19.444" />
+   <edge id="ENo" from="EN" to="N" numLanes="3" speed="11.111" />
+
+</edges>

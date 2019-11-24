@@ -1,0 +1,19 @@
+<additional>
+
+    <e1Detector id="W1_el" lane="Wi_0" pos="10" freq="30" file="cross.out" friendlyPos="x"/>
+    <e1Detector id="W2_el" lane="Wi_1" pos="10" freq="30" file="cross.out" friendlyPos="x"/>
+    <e1Detector id="W3_el" lane="Wi_2" pos="10" freq="30" file="cross.out" friendlyPos="x"/>
+
+    <e1Detector id="E1_el" lane="Ei_0" pos="10" freq="30" file="cross.out" friendlyPos="x"/>
+    <e1Detector id="E2_el" lane="Ei_1" pos="10" freq="30" file="cross.out" friendlyPos="x"/>
+    <e1Detector id="E3_el" lane="Ei_2" pos="10" freq="30" file="cross.out" friendlyPos="x"/>
+
+    <e1Detector id="S1_el" lane="Si_0" pos="10" freq="30" file="cross.out" friendlyPos="x"/>
+    <e1Detector id="S2_el" lane="Si_1" pos="10" freq="30" file="cross.out" friendlyPos="x"/>
+    <e1Detector id="S3_el" lane="Si_2" pos="10" freq="30" file="cross.out" friendlyPos="x"/>
+
+    <e1Detector id="N1_el" lane="Ni_0" pos="10" freq="30" file="cross.out" friendlyPos="x"/>
+    <e1Detector id="N2_el" lane="Ni_1" pos="10" freq="30" file="cross.out" friendlyPos="x"/>
+    <e1Detector id="N3_el" lane="Ni_2" pos="10" freq="30" file="cross.out" friendlyPos="x"/>
+
+</additional>
