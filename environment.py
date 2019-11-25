@@ -32,15 +32,18 @@ PHASE_NSA_G, PHASE_NSA_Y = 18, 19
 
 class TrafficEnvironment:
 
+    num_actions = 10
+
     # Constructor
-    def __init__(self, max_steps, green_duration, yellow_duration, num_actions, input_size, cell_number, policy, policy_based):
+    def __init__(self, max_steps, green_duration, yellow_duration, cell_number, deceleration_th, no_gui):
+
         # Initialize global variables
         self.steps = 0
         self.max_steps = max_steps
         self.waiting_times = {}
         self.speeds = {}
         self.accelerations = {}
-        self.num_actions = num_actions
+
         self.REWARDS = 0
         self.samples = []
 
@@ -48,7 +51,6 @@ class TrafficEnvironment:
         self.yellow_duration = yellow_duration
         self.sum_intersection_queue = 0
         self.lane_length = 50
-        self.input_size = input_size
         self.cell_number = cell_number # The number of cell
         self.cell_length = self.lane_length / self.cell_number
         self.lane_ids = {'Wi_0': 0, 'Wi_1': 1, 'Wi_2': 2,
@@ -57,20 +59,20 @@ class TrafficEnvironment:
                          'Ni_0': 9, 'Ni_1': 10, 'Ni_2': 11}
         self.incoming_roads = ['Wi', 'Ei', 'Si', 'Ni']
 
-        self.policy = policy
-        self.policy_based = policy_based # True or False whether the action is selected based on some kind of policy
-
         self._rewards_store = []
         self._cumulative_wait_store = []
         self._average_intersection_queue_store = []
 
+        num_lanes = 12
+        self.input_size = 2 * num_lanes * self.cell_number + self.num_actions
+        self.no_gui = no_gui
+
     # Public method
     # Method for running simulation of one episode
-    def run(self, episode):
+    def run(self, policy):
 
         # Select whether gui is shown or not
-        options = self.__get_options()
-        if options.nogui:
+        if self.no_gui:
             sumoBinary = checkBinary('sumo')
         else:
             sumoBinary = checkBinary('sumo-gui')
@@ -102,12 +104,8 @@ class TrafficEnvironment:
             self.__memorizer((state_curr, action_prev, reward))
 
             # Select the light phase to activate, based on the current state of the intersection
-            if self.policy_based:
-                # Select the next action based on the policy (traditional, EA, and RL)
-                action = self.policy.get_selection(state_curr)
-            else:
-                # Select the next action randomly if there is no policy
-                action = random.randint(0, self.num_actions - 1)
+            # Select the next action based on the policy (traditional, EA, and RL)
+            action = policy.get_selection(state_curr)
 
             # Conduct yellow phase action before performing the next action
             if self.steps != 0 and action_prev != action:
@@ -133,8 +131,8 @@ class TrafficEnvironment:
         traci.close()
 
     # Method for recording state, action, and reward at every steps in one episode
-    def recorder(self, policy_type, episode):
-        with open('history/{0}/record_{1}'.format(policy_type, episode), 'wb') as f:
+    def save(self, policy_type, episode):
+        with open('history/{0}/record_{1}.pickle'.format(policy_type, episode), 'wb') as f:
             pickle.dump(self.samples, f)
 
     # Private method
@@ -159,8 +157,8 @@ class TrafficEnvironment:
     def __get_state(self, action, state_phase):
 
         # Initialize state using input_size of the neural network
-        state_position = np.zeros((int(self.lane_ids.get('Ni_2') + 1) * self.cell_number))
-        state_speed = np.zeros((int(self.lane_ids.get('Ni_2') + 1) * self.cell_number))
+        state_position = np.zeros(int(self.lane_ids.get('Ni_2') + 1) * self.cell_number)
+        state_speed = np.zeros(int(self.lane_ids.get('Ni_2') + 1) * self.cell_number)
 
         # Loop function for obtaining the state represented by vehicles' position
         for vehicle_id in traci.vehicle.getIDList():
@@ -306,13 +304,6 @@ class TrafficEnvironment:
         self.samples = []
         self.sum_intersection_queue = 0
 
-    # Method for getting options for SUMO simulator
-    def __get_options(self):
-        optParser = optparse.OptionParser()
-        optParser.add_option("--nogui", action="store_true", default=False, help="run the commandline version of sumo")
-        options, args = optParser.parse_args()
-
-        return options
 
     @property
     def rewards_store(self):
@@ -328,7 +319,15 @@ class TrafficEnvironment:
 
 
 if __name__ == '__main__':
+    from traditional_policy import TraditionalPolicy
     # Below code is example for running the simulator
-    traffic_environment = TrafficEnvironment(5400, 10, 4, 10, None, 5, None, False)
-    traffic_environment.run(1)
-    traffic_environment.recorder('traditional', 0)
+
+    optParser = optparse.OptionParser()
+    optParser.add_option("--nogui", action="store_true", default=False, help="run the commandline version of sumo")
+    options, args = optParser.parse_args()
+
+    traffic_environment = TrafficEnvironment(5400, 10, 4, 5, 0.5, options.nogui)
+    traffic_environment.run(TraditionalPolicy(phase_time=6))
+
+    traffic_environment.save('traditional', 0)
+

@@ -29,7 +29,7 @@ class TFNetwork:
             self.output_size = original_model.layers[-1].output_shape[-1]
             self.hidden_layer_size = original_model.layers[0].output_shape[-1]
             self.num_hidden_layers = len(original_model.layers) - 1
-            self.output_activation = original_model.layers[-1]
+            self.output_activation = original_model.layers[-1].activation
 
             self.model = tf.keras.models.clone_model(original_model)
 
@@ -70,7 +70,7 @@ class TFNetwork:
             self.model.add(tf.keras.layers.Dense(output_size, activation=output_activation))
 
         self.model.compile(optimizer=tf.keras.optimizers.SGD(0.1),
-                               loss='categorical_crossentropy',
+                               loss='sparse_categorical_crossentropy',
                                metrics=['accuracy'])
 
     def mutate(self, mutation_fraction, stddev):  # other args? (noise distribution, etc)
@@ -106,11 +106,13 @@ class TFNetwork:
 
         self.model.save(file_path)
 
-    def get_selection(self, input_vector, one_hot=True):
+    def get_selection(self, input_vector, one_hot=False):
 
         assert(self.output_activation == tf.keras.activations.softmax)
 
-        input_vector = np.reshape(input_vector, (1, len(input_vector)))
+        input_vector = np.array(input_vector)
+
+        input_vector = np.reshape(input_vector, (1, max(input_vector.shape))).astype(np.float32)
 
         # inputs and outputs are 2D arrays
         output_vector = self.model(input_vector)[0]
@@ -131,15 +133,13 @@ class TFNetwork:
 
         return output_vector
 
+
 def test():
     try:
         # runs a test of the neural network and training on the MNIST dataset
         example = TFNetwork(28 * 28, 10, 100, 3)
 
         (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
-
-        y_train = tf.one_hot(y_train, 10).numpy()
-        y_test = tf.one_hot(y_test, 10).numpy()
 
         # Preprocess the data (these are Numpy arrays)
         x_train = x_train.reshape(60000, 784).astype('float32') / 255

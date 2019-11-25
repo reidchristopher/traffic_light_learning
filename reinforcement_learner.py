@@ -7,17 +7,37 @@ import numpy as np
 
 class ReinforcementLearner:
 
-    def __init__(self, state_size, action_size, hidden_layer_size, num_hidden_layers, discount_rate=0.99):
+    @staticmethod
+    def from_existing(actor_network, critic_network):
 
-        self.state_size = state_size
-        self.action_size = action_size
+        network_dict = {'actor': actor_network,
+                        'critic': critic_network}
+
+        return ReinforcementLearner(None, None, None, None, original_networks=network_dict)
+
+    def __init__(self, state_size, action_size, hidden_layer_size, num_hidden_layers,
+                 discount_rate=0.99,
+                 original_networks=None):
+
+        if original_networks is None:
+            self.state_size = state_size
+            self.action_size = action_size
+
+            self.actor = TFNetwork(state_size, action_size, hidden_layer_size, num_hidden_layers,
+                                   output_activation=tf.keras.activations.linear)
+
+            self.critic = TFNetwork(state_size, 1, hidden_layer_size, num_hidden_layers,
+                                    output_activation=tf.keras.activations.linear)
+        else:
+            self.actor = TFNetwork.from_existing(original_networks['actor'])
+
+            self.critic = TFNetwork.from_existing(original_networks['critic'])
+
+            self.state_size = self.actor.model.layers[0].input_shape[-1]
+
+            self.action_size = self.actor.model.layers[-1].output_shape[-1]
+
         self.discount_rate = discount_rate
-
-        self.actor = TFNetwork(state_size, action_size, hidden_layer_size, num_hidden_layers,
-                               output_activation=tf.keras.activations.linear)
-
-        self.critic = TFNetwork(state_size, 1, hidden_layer_size, num_hidden_layers,
-                                output_activation=tf.keras.activations.linear)
 
         self.states = []
         self.actions = []
