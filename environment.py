@@ -31,24 +31,23 @@ PHASE_NSA_G, PHASE_NSA_Y = 18, 19
 
 class TrafficEnvironment:
 
+    num_actions = 10
+
     # Constructor
-    def __init__(self, epsilon, max_steps, green_duration, yellow_duration, num_actions, input_size, cell_number, deceleration_th):
+    def __init__(self, max_steps, green_duration, yellow_duration, cell_number, deceleration_th, no_gui):
         # Initialize global variables
-        self.epsilon = epsilon
         self.steps = 0
         self.max_steps = max_steps
         self.waiting_times = {}
         self.speeds = {}
         self.deceleration_th = deceleration_th
         self.accelerations = {}
-        self.num_actions = num_actions
         self.REWARD = 0
 
         self.green_duration = green_duration
         self.yellow_duration = yellow_duration
         self.sum_intersection_queue = 0
         self.lane_length = 50
-        self.input_size = input_size
         self.cell_number = cell_number # The number of cell
         self.cell_length = self.lane_length / self.cell_number
         self.lane_ids = {'Wi_0': 0, 'Wi_1': 1, 'Wi_2': 2,
@@ -57,13 +56,15 @@ class TrafficEnvironment:
                          'Ni_0': 9, 'Ni_1': 10, 'Ni_2': 11}
         self.incoming_roads = ['Wi', 'Ei', 'Si', 'Ni']
 
+        self.input_size = 2 * int(self.lane_ids.get('Ni_2') + 1) * self.cell_number + self.num_actions
+        self.no_gui = no_gui
+
     # Public method
     # Method for running simulation of one episode
-    def run(self, episode):
+    def run(self, policy):
 
         # Select whether gui is shown or not
-        options = self.__get_options()
-        if options.nogui:
+        if self.no_gui:
             sumoBinary = checkBinary('sumo')
         else:
             sumoBinary = checkBinary('sumo-gui')
@@ -92,7 +93,7 @@ class TrafficEnvironment:
             reward = self.__reward(total_wait_curr, total_wait_prev, reward_type="waiting_time")
 
             # Select the light phase to activate, based on the current state of the intersection
-            action = self.__choose_action(state_curr)
+            action = policy.get_selection(state_curr)
 
             # Conduct yellow phase action before performing the next action
             if self.steps != 0 and action_prev != action:
@@ -135,8 +136,8 @@ class TrafficEnvironment:
     def __get_state(self, action, state_phase):
 
         # Initialize state using input_size of the neural network
-        state_position = np.zeros((int(self.lane_ids.get('Ni_2') + 1) * self.cell_number))
-        state_speed = np.zeros((int(self.lane_ids.get('Ni_2') + 1) * self.cell_number))
+        state_position = np.zeros(int(self.lane_ids.get('Ni_2') + 1) * self.cell_number)
+        state_speed = np.zeros(int(self.lane_ids.get('Ni_2') + 1) * self.cell_number)
 
         # Loop function for obtaining the state represented by vehicles' position
         for vehicle_id in traci.vehicle.getIDList():
@@ -285,15 +286,14 @@ class TrafficEnvironment:
         self.REWARD = 0
         self.sum_intersection_queue = 0
 
-    # Method for getting options for SUMO simulator
-    def __get_options(self):
-        optParser = optparse.OptionParser()
-        optParser.add_option("--nogui", action="store_true", default=False, help="run the commandline version of sumo")
-        options, args = optParser.parse_args()
-
-        return options
 
 if __name__ == '__main__':
+    from traditional_policy import TraditionalPolicy
     # Below code is example for running the simulator
-    traffic_environment = TrafficEnvironment(0.1, 5400, 10, 4, 10, None, 5, 0.5)
-    traffic_environment.run(10)
+
+    optParser = optparse.OptionParser()
+    optParser.add_option("--nogui", action="store_true", default=False, help="run the commandline version of sumo")
+    options, args = optParser.parse_args()
+
+    traffic_environment = TrafficEnvironment(5400, 10, 4, 5, 0.5, options.nogui)
+    traffic_environment.run(TraditionalPolicy(phase_time=6))
