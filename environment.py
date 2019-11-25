@@ -33,17 +33,15 @@ PHASE_NSA_G, PHASE_NSA_Y = 18, 19
 class TrafficEnvironment:
 
     # Constructor
-    def __init__(self, epsilon, max_steps, green_duration, yellow_duration, num_actions, input_size, cell_number, deceleration_th, policy, policy_based):
+    def __init__(self, max_steps, green_duration, yellow_duration, num_actions, input_size, cell_number, policy, policy_based):
         # Initialize global variables
-        self.epsilon = epsilon
         self.steps = 0
         self.max_steps = max_steps
         self.waiting_times = {}
         self.speeds = {}
-        self.deceleration_th = deceleration_th
         self.accelerations = {}
         self.num_actions = num_actions
-        self.REWARD = 0
+        self.REWARDS = 0
         self.samples = []
 
         self.green_duration = green_duration
@@ -61,6 +59,10 @@ class TrafficEnvironment:
 
         self.policy = policy
         self.policy_based = policy_based # True or False whether the action is selected based on some kind of policy
+
+        self._rewards_store = []
+        self._cumulative_wait_store = []
+        self._average_intersection_queue_store = []
 
     # Public method
     # Method for running simulation of one episode
@@ -123,15 +125,16 @@ class TrafficEnvironment:
             action_prev = action
             total_wait_prev = total_wait_curr
             if reward < 0:
-                self.REWARD += reward
+                self.REWARDS += reward
 
+        self.__save_statistics(self.REWARDS)
         # End simulation for one episode
-        print("Total reward: {}".format(self.REWARD))
+        print("Total reward: {}".format(self.REWARDS))
         traci.close()
 
     # Method for recording state, action, and reward at every steps in one episode
-    def recorder(self, file_name):
-        with open(file_name, 'wb') as f:
+    def recorder(self, policy_type, episode):
+        with open('history/{0}/record_{1}'.format(policy_type, episode), 'wb') as f:
             pickle.dump(self.samples, f)
 
     # Private method
@@ -249,7 +252,7 @@ class TrafficEnvironment:
             # Add acceleration information
             if road_id in self.incoming_roads:
                 # Add deceleration information if it is more than threshold
-                if abs(acceleration) > abs(self.deceleration_th):
+                if abs(acceleration) > abs(0.5):
                     self.accelerations[vehicle_id] = acceleration
             else:
                 if vehicle_id in self.accelerations:
@@ -272,6 +275,12 @@ class TrafficEnvironment:
 
         return queue
 
+    # Method for saving statistics of the simulation of one loop
+    def __save_statistics(self, rewards):
+        self._rewards_store.append(rewards)
+        self._cumulative_wait_store.append(self.sum_intersection_queue)
+        self._average_intersection_queue_store.append(self.sum_intersection_queue / self.max_steps)
+
     # Method for computing reward
     def __reward(self, total_wait_curr, total_wait_prev, reward_type):
         if reward_type == "waiting_time":
@@ -293,7 +302,8 @@ class TrafficEnvironment:
         self.waiting_times = {}
         self.speeds = {}
         self.accelerations = {}
-        self.REWARD = 0
+        self.REWARDS = 0
+        self.samples = []
         self.sum_intersection_queue = 0
 
     # Method for getting options for SUMO simulator
@@ -304,8 +314,21 @@ class TrafficEnvironment:
 
         return options
 
+    @property
+    def rewards_store(self):
+        return self._rewards_store
+
+    @property
+    def cumulative_wait_store(self):
+        return self._cumulative_wait_store
+
+    @property
+    def average_intersection_queue_store(self):
+        return self._average_intersection_queue_store
+
+
 if __name__ == '__main__':
     # Below code is example for running the simulator
-    traffic_environment = TrafficEnvironment(0.1, 5400, 10, 4, 10, None, 5, 0.5, None, False)
+    traffic_environment = TrafficEnvironment(5400, 10, 4, 10, None, 5, None, False)
     traffic_environment.run(1)
-    traffic_environment.recorder("sample.pickle")
+    traffic_environment.recorder('traditional', 0)
