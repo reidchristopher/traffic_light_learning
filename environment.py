@@ -60,9 +60,9 @@ class TrafficEnvironment:
         self.policy = policy
         self.policy_based = policy_based # True or False whether the action is selected based on some kind of policy
 
-        self.rewards_store = []
-        self.cumulative_wait_store = []
-        self.average_intersection_queue_store = []
+        self._rewards_store = []
+        self._cumulative_wait_store = []
+        self._average_intersection_queue_store = []
 
     # Public method
     # Method for running simulation of one episode
@@ -277,9 +277,9 @@ class TrafficEnvironment:
 
     # Method for saving statistics of the simulation of one loop
     def __save_statistics(self, rewards):
-        self.rewards_store.append(rewards)
-        self.cumulative_wait_store.append(self.sum_intersection_queue)
-        self.average_intersection_queue_store.append(self.sum_intersection_queue / self.max_steps)
+        self._rewards_store.append(rewards)
+        self._cumulative_wait_store.append(self.sum_intersection_queue)
+        self._average_intersection_queue_store.append(self.sum_intersection_queue / self.max_steps)
 
     # Method for computing reward
     def __reward(self, total_wait_curr, total_wait_prev, reward_type):
@@ -316,15 +316,16 @@ class TrafficEnvironment:
 
     @property
     def rewards_store(self):
-        return self.rewards_store
+        return self._rewards_store
 
     @property
     def cumulative_wait_store(self):
-        return self.cumulative_wait_store
+        return self._cumulative_wait_store
 
     @property
     def average_intersection_queue_store(self):
-        return self.average_intersection_queue_store
+        return self._average_intersection_queue_store
+
 
 if __name__ == '__main__':
     # Below code is example for running the simulator
