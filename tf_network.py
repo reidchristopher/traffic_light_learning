@@ -106,11 +106,13 @@ class TFNetwork:
 
         self.model.save(file_path)
 
-    def get_selection(self, input_vector, one_hot=True):
+    def get_selection(self, input_vector, one_hot=False):
 
         assert(self.output_activation == tf.keras.activations.softmax)
 
-        input_vector = np.reshape(input_vector, (1, len(input_vector)))
+        input_vector = np.array(input_vector)
+
+        input_vector = np.reshape(input_vector, (1, max(input_vector.shape))).astype(np.float32)
 
         # inputs and outputs are 2D arrays
         output_vector = self.model(input_vector)[0]
