@@ -8,6 +8,8 @@ import optparse
 import numpy as np
 import pickle
 
+from reinforcement_learner import ReinforcementLearner
+
 # Import libraries for the traffic light simulator
 if 'SUMO_HOME' in os.environ:
     tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
@@ -44,8 +46,10 @@ class TrafficEnvironment:
         self.speeds = {}
         self.accelerations = {}
 
-        self.REWARDS = 0
-        self.samples = []
+        self.cumulative_reward = 0
+        self.states = []
+        self.actions = []
+        self.rewards = []
 
         self.green_duration = green_duration
         self.yellow_duration = yellow_duration
@@ -84,6 +88,7 @@ class TrafficEnvironment:
         self.__reset()
         action_prev = 0
         action_prev_prev = None
+        state_prev = None
         total_wait_prev = 0
         state_phase_prev = np.zeros(int(self.num_actions))
 
@@ -99,6 +104,11 @@ class TrafficEnvironment:
             total_wait_curr = self.__get_waiting_times()
             # Calculate reward of previous action
             reward = self.__reward(total_wait_curr, total_wait_prev, reward_type="waiting_time")
+
+            if state_prev is not None:
+                self.states.append(state_prev)
+                self.actions.append(action_prev)
+                self.rewards.append(reward)
 
             # Memorize state, action, and reward
             self.__memorizer((state_curr, action_prev, reward))
@@ -123,17 +133,17 @@ class TrafficEnvironment:
             action_prev = action
             total_wait_prev = total_wait_curr
             if reward < 0:
-                self.REWARDS += reward
+                self.cumulative_reward += reward
 
-        self.__save_statistics(self.REWARDS)
+        self.__save_statistics(self.cumulative_reward)
         # End simulation for one episode
-        print("Total reward: {}".format(self.REWARDS))
+        print("Total reward: {}".format(self.cumulative_reward))
         traci.close()
 
     # Method for recording state, action, and reward at every steps in one episode
     def save(self, policy_type, episode):
         with open('history/{0}/record_{1}.pickle'.format(policy_type, episode), 'wb') as f:
-            pickle.dump(self.samples, f)
+            pickle.dump((self.states, self.actions, self.rewards), f)
 
     # Private method
     # Method for handling the correct number of steps to simulate
@@ -275,7 +285,6 @@ class TrafficEnvironment:
 
     # Method for saving statistics of the simulation of one loop
     def __save_statistics(self, rewards):
-        self._rewards_store.append(rewards)
         self._cumulative_wait_store.append(self.sum_intersection_queue)
         self._average_intersection_queue_store.append(self.sum_intersection_queue / self.max_steps)
 
@@ -300,7 +309,7 @@ class TrafficEnvironment:
         self.waiting_times = {}
         self.speeds = {}
         self.accelerations = {}
-        self.REWARDS = 0
+        self.cumulative_reward = 0
         self.samples = []
         self.sum_intersection_queue = 0
 
