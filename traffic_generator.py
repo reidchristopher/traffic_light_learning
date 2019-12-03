@@ -30,4 +30,4 @@ class TrafficGenerator:
 
 if __name__ == '__main__':
     traffic_generator = TrafficGenerator()
-    traffic_generator.generate_routefile()
+    traffic_generator.generate_routefile([250 for _ in range(12)])

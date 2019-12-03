@@ -346,42 +346,12 @@ if __name__ == '__main__':
     optParser.add_option("--nogui", action="store_true", default=False, help="run the commandline version of sumo")
     options, args = optParser.parse_args()
 
-    import matplotlib.pyplot as plt
-
     green_duration = 5
     yellow_duration = 4
 
-    num_tests = 100
     sim_length = 1800
-    trad_rewards = []
-    trad_net_rewards = []
-    for i in range(num_tests):
 
-        # traffic_environment = TrafficEnvironment(sim_length, green_duration, yellow_duration, 5, 0.5, options.nogui)
-        # traffic_environment.run(TraditionalPolicy(phase_time=6))
-        #
-        # traffic_environment.save('traditional', i + 100)
-        #
-        # trad_rewards.append(traffic_environment.cumulative_reward)
+    traffic_environment = TrafficEnvironment(sim_length, green_duration, yellow_duration, 5, 0.5, options.nogui)
+    traffic_environment.run(TraditionalPolicy(phase_time=6))
 
-        from tf_network import TFNetwork
-        traffic_environment = TrafficEnvironment(sim_length, green_duration, yellow_duration, 5, 0.5, options.nogui)
-        traffic_environment.run(TFNetwork.from_save("trained_network_v2.h5"))
-
-        trad_net_rewards.append(traffic_environment.cumulative_reward)
-
-        # import pickle
-        # with open("trad_test_results.pickle", "wb") as file:
-        #     pickle.dump(trad_rewards, file)
-
-        with open("trad_net_test_results.pickle", "wb") as file:
-            pickle.dump(trad_net_rewards, file)
-
-    # plt.plot(range(num_tests), trad_rewards)
-    #
-    # plt.plot(range(num_tests), trad_net_rewards)
-    #
-    # plt.xlabel("Test #")
-    # plt.ylabel("Reward")
-    #
-    # plt.show()
+    traffic_environment.save('traditional', 0)
