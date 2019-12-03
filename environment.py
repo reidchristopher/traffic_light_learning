@@ -32,6 +32,7 @@ PHASE_NL_G, PHASE_NL_Y = 14, 15
 PHASE_EWA_G, PHASE_EWA_Y = 16, 17
 PHASE_NSA_G, PHASE_NSA_Y = 18, 19
 
+
 class TrafficEnvironment:
 
     num_actions = 10
@@ -54,9 +55,10 @@ class TrafficEnvironment:
         self.green_duration = green_duration
         self.yellow_duration = yellow_duration
         self.sum_intersection_queue = 0
-        self.lane_length = 50
+        self.detection_length = 50
+        self.lane_length = 1000
         self.cell_number = cell_number # The number of cell
-        self.cell_length = self.lane_length / self.cell_number
+        self.cell_length = self.detection_length / self.cell_number
         self.lane_ids = {'Wi_0': 0, 'Wi_1': 1, 'Wi_2': 2,
                          'Ei_0': 3, 'Ei_1': 4, 'Ei_2': 5,
                          'Si_0': 6, 'Si_1': 7, 'Si_2': 8,
@@ -82,7 +84,7 @@ class TrafficEnvironment:
             sumoBinary = checkBinary('sumo-gui')
 
         # Start simulation
-        traci.start([sumoBinary, "-c", "data/cross.sumocfg", "--tripinfo-output", "tripinfo.xml"])
+        traci.start([sumoBinary, "-c", "data/cross.sumocfg", "--tripinfo-output", "tripinfo.xml", "--random"])
 
         # Reset variables for RL
         self.__reset()
@@ -104,6 +106,12 @@ class TrafficEnvironment:
             total_wait_curr = self.__get_waiting_times()
             # Calculate reward of previous action
             reward = self.__reward(total_wait_curr, total_wait_prev, reward_type="waiting_time")
+
+            if type(policy) == ReinforcementLearner and state_prev is not None:
+                policy.record_result(state_prev, action_prev, reward)
+
+                if len(policy.states) == policy.batch_size:
+                    policy.update_weights(state_curr)
 
             if state_prev is not None:
                 self.states.append(state_prev)
@@ -142,7 +150,7 @@ class TrafficEnvironment:
 
     # Method for recording state, action, and reward at every steps in one episode
     def save(self, policy_type, episode):
-        with open('history/{0}/record_{1}.pickle'.format(policy_type, episode), 'wb') as f:
+        with open('history/{0}_{1}.pickle'.format(policy_type, episode), 'wb') as f:
             pickle.dump((self.states, self.actions, self.rewards), f)
 
     # Private method
@@ -177,6 +185,10 @@ class TrafficEnvironment:
             lane_position = self.lane_length - traci.vehicle.getLanePosition(vehicle_id)
             speed = traci.vehicle.getSpeed(vehicle_id)
             valid_car = False
+
+            # only concern ourselves with cars close to intersection
+            if lane_position > self.detection_length:
+                continue
 
             # Map vehicle's position in meters into cells
             cell_id = 0
@@ -330,13 +342,46 @@ class TrafficEnvironment:
 if __name__ == '__main__':
     from traditional_policy import TraditionalPolicy
     # Below code is example for running the simulator
-
     optParser = optparse.OptionParser()
     optParser.add_option("--nogui", action="store_true", default=False, help="run the commandline version of sumo")
     options, args = optParser.parse_args()
 
-    traffic_environment = TrafficEnvironment(5400, 10, 4, 5, 0.5, options.nogui)
-    traffic_environment.run(TraditionalPolicy(phase_time=6))
+    import matplotlib.pyplot as plt
 
-    traffic_environment.save('traditional', 0)
+    green_duration = 5
+    yellow_duration = 4
 
+    num_tests = 100
+    sim_length = 1800
+    trad_rewards = []
+    trad_net_rewards = []
+    for i in range(num_tests):
+
+        # traffic_environment = TrafficEnvironment(sim_length, green_duration, yellow_duration, 5, 0.5, options.nogui)
+        # traffic_environment.run(TraditionalPolicy(phase_time=6))
+        #
+        # traffic_environment.save('traditional', i + 100)
+        #
+        # trad_rewards.append(traffic_environment.cumulative_reward)
+
+        from tf_network import TFNetwork
+        traffic_environment = TrafficEnvironment(sim_length, green_duration, yellow_duration, 5, 0.5, options.nogui)
+        traffic_environment.run(TFNetwork.from_save("trained_network_v2.h5"))
+
+        trad_net_rewards.append(traffic_environment.cumulative_reward)
+
+        # import pickle
+        # with open("trad_test_results.pickle", "wb") as file:
+        #     pickle.dump(trad_rewards, file)
+
+        with open("trad_net_test_results.pickle", "wb") as file:
+            pickle.dump(trad_net_rewards, file)
+
+    # plt.plot(range(num_tests), trad_rewards)
+    #
+    # plt.plot(range(num_tests), trad_net_rewards)
+    #
+    # plt.xlabel("Test #")
+    # plt.ylabel("Reward")
+    #
+    # plt.show()

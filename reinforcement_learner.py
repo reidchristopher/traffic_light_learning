@@ -17,6 +17,7 @@ class ReinforcementLearner:
 
     def __init__(self, state_size, action_size, hidden_layer_size, num_hidden_layers,
                  discount_rate=0.99,
+                 batch_size=10,
                  original_networks=None):
 
         if original_networks is None:
@@ -38,6 +39,7 @@ class ReinforcementLearner:
             self.action_size = self.actor.model.layers[-1].output_shape[-1]
 
         self.discount_rate = discount_rate
+        self.batch_size = batch_size
 
         self.states = []
         self.actions = []
@@ -68,10 +70,10 @@ class ReinforcementLearner:
         self.actions.append(action)
         self.rewards.append(reward)
 
-    def update_weights(self):
+    def update_weights(self, curr_state):
 
         with tf.GradientTape() as tape:
-            loss = self.compute_loss()
+            loss = self.compute_loss(curr_state)
 
         gradients = tape.gradient(loss, self.actor.model.trainable_weights + self.critic.model.trainable_weights)
 
@@ -85,11 +87,11 @@ class ReinforcementLearner:
         self.actions.clear()
         self.rewards.clear()
 
-    def compute_loss(self):
+    def compute_loss(self, curr_state):
 
         discounted_rewards = []
 
-        reward_sum = 0  # self.critic.get_output(state).numpy()[0] # TODO use current state for critic value start?
+        reward_sum = self.critic.get_output(curr_state).numpy()[0] # TODO use current state for critic value start?
 
         discounted_rewards = []
         for reward in self.rewards[::-1]:

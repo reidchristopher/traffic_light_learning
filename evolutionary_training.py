@@ -5,12 +5,13 @@ from evolutionary_learner import EvolutionaryLearner
 from environment import TrafficEnvironment
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
 
 def main():
 
     num_phases = 10
 
-    num_steps = 540
+    num_steps = 1800
 
     green_duration = 5
     yellow_duration = 4
@@ -25,9 +26,9 @@ def main():
                              deceleration_th,
                              no_gui=True)
 
-    population_size = 10
+    population_size = 5
 
-    num_generations = 100
+    num_generations = 10
 
     hidden_unit_size = 300
     num_hidden_layers = 6
@@ -50,16 +51,16 @@ def main():
 
             env.run(network)
 
-            scores[j] = env.REWARD
+            scores[j] = env.cumulative_reward
 
         learner.select(scores, 0.1)
 
         generations.append(i)
         rewards.append(np.average(scores))
 
-        plt.clf()
-        plt.plot(generations, rewards)
-        plt.pause(0.01)
+        # plt.clf()
+        # plt.plot(generations, rewards)
+        # plt.pause(0.01)
 
         print("Scores after selection %d" % i)
         print(scores)
@@ -67,9 +68,12 @@ def main():
         print("Average score after selection %d" % i)
         print(np.average(scores))
 
-    plt.xlabel("Generation")
-    plt.ylabel("Average reward")
-    plt.show()
+        with open("evolutionary_results.pickle", "wb") as file:
+            pickle.dump(rewards, file)
+
+    # plt.xlabel("Generation")
+    # plt.ylabel("Average reward")
+    # plt.show()
 
 
 if __name__ == "__main__":

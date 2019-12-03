@@ -2,8 +2,10 @@
 
 import sys
 import pickle
+import numpy as np
 from tf_network import TFNetwork
 from reinforcement_learner import ReinforcementLearner
+
 
 def main():
 
@@ -72,6 +74,10 @@ def main():
 
     with open(recording_file, "rb") as file:
         states, actions, rewards = pickle.load(file)
+
+    states = np.array(states)
+    actions = np.array(actions)
+    rewards = np.array(rewards)
 
     if critic_file is not None:
         actor_file = save_file

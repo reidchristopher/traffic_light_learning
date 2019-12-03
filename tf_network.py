@@ -69,7 +69,7 @@ class TFNetwork:
             # add output layer
             self.model.add(tf.keras.layers.Dense(output_size, activation=output_activation))
 
-        self.model.compile(optimizer=tf.keras.optimizers.SGD(0.1),
+        self.model.compile(optimizer=tf.keras.optimizers.RMSprop(),
                                loss='sparse_categorical_crossentropy',
                                metrics=['accuracy'])
 
