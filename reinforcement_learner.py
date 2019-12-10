@@ -8,12 +8,14 @@ import numpy as np
 class ReinforcementLearner:
 
     @staticmethod
-    def from_existing(actor_network, critic_network):
+    def from_existing(actor_network, critic_network, discount_rate=0.99, batch_size=10):
 
         network_dict = {'actor': actor_network,
                         'critic': critic_network}
 
-        return ReinforcementLearner(None, None, None, None, original_networks=network_dict)
+        return ReinforcementLearner(None, None, None, None, original_networks=network_dict,
+                                    discount_rate=discount_rate,
+                                    batch_size=batch_size)
 
     def __init__(self, state_size, action_size, hidden_layer_size, num_hidden_layers,
                  discount_rate=0.99,

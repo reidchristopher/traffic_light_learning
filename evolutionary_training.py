@@ -6,8 +6,14 @@ from environment import TrafficEnvironment
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
+import optparse
+from tf_network import TFNetwork
 
 def main():
+
+    opt_parser = optparse.OptionParser()
+    opt_parser.add_option("--from_save", action="store_true", default=False, help="run the commandline version of sumo")
+    options, args = opt_parser.parse_args()
 
     num_phases = 10
 
@@ -26,6 +32,7 @@ def main():
                              deceleration_th,
                              no_gui=True)
 
+    num_tests = 10
     population_size = 5
 
     num_generations = 10
@@ -36,44 +43,52 @@ def main():
     mutation_fraction = 0.1
     mutation_stddev = 0.1
 
-    learner = EvolutionaryLearner(population_size, env.input_size, num_phases, hidden_unit_size, num_hidden_layers)
+    for test_num in range(num_tests):
+        if options.from_save:
 
-    generations = []
-    rewards = []
+            networks = []
+            for i in range(population_size):
+                networks.append(TFNetwork.from_save("evo_%d.h5" % i))
 
-    for i in range(num_generations):
+            learner = EvolutionaryLearner.from_existing(networks)
 
-        learner.generate_mutations(mutation_fraction, mutation_stddev)
+            save_file = "evolutionary_transfer_results_%d.pickle" % test_num
+        else:
 
-        scores = [None for _ in learner.networks]
+            learner = EvolutionaryLearner(population_size, env.input_size, num_phases, hidden_unit_size, num_hidden_layers)
 
-        for j, network in enumerate(learner.networks):
+            save_file = "evolutionary_results_%d.pickle" % test_num
 
-            env.run(network)
+        generations = []
+        rewards = []
 
-            scores[j] = env.cumulative_reward
+        for i in range(num_generations):
 
-        learner.select(scores, 0.1)
+            learner.generate_mutations(mutation_fraction, mutation_stddev)
 
-        generations.append(i)
-        rewards.append(np.average(scores))
+            scores = [None for _ in learner.networks]
 
-        # plt.clf()
-        # plt.plot(generations, rewards)
-        # plt.pause(0.01)
+            for j, network in enumerate(learner.networks):
 
-        print("Scores after selection %d" % i)
-        print(scores)
+                env.run(network)
 
-        print("Average score after selection %d" % i)
-        print(np.average(scores))
+                scores[j] = env.cumulative_reward
 
-        with open("evolutionary_results.pickle", "wb") as file:
-            pickle.dump(rewards, file)
+            learner.select(scores, 0.1)
 
-    # plt.xlabel("Generation")
-    # plt.ylabel("Average reward")
-    # plt.show()
+            generations.append(i)
+
+            for score in scores:
+                rewards.append(score)
+
+            print("Scores after selection %d" % i)
+            print(scores)
+
+            print("Average score after selection %d" % i)
+            print(np.average(scores))
+
+            with open(save_file, "wb") as file:
+                pickle.dump(rewards, file)
 
 
 if __name__ == "__main__":

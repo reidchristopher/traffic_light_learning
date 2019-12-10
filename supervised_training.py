@@ -3,6 +3,7 @@
 import sys
 import pickle
 import numpy as np
+import tensorflow as tf
 from tf_network import TFNetwork
 from reinforcement_learner import ReinforcementLearner
 
@@ -15,8 +16,8 @@ def main():
     save_file = None
 
     # default NN params
-    hidden_layer_size = 100
-    num_hidden_layers = 3
+    hidden_layer_size = 300
+    num_hidden_layers = 6
 
     # default training params
     num_epochs = 10
@@ -81,10 +82,53 @@ def main():
 
     if critic_file is not None:
         actor_file = save_file
+        optimizer = tf.optimizers.RMSprop()
 
-        # TODO train both actor and critic
-        actor_network = None
-        critic_network = None
+        # TODO train critic?
+
+        critic_learner = ReinforcementLearner(state_size=len(states[0]), action_size=num_phases,
+                                          num_hidden_layers=num_hidden_layers, hidden_layer_size=hidden_layer_size,
+                                          discount_rate=0.9, batch_size=10)
+
+        actor_learner = ReinforcementLearner(state_size=len(states[0]), action_size=num_phases,
+                                          num_hidden_layers=num_hidden_layers, hidden_layer_size=hidden_layer_size,
+                                          discount_rate=0.9, batch_size=10)
+
+        from math import ceil
+        num_batches = ceil(states.shape[0] / batch_size)
+
+        for i in range(num_epochs):
+
+            for j in range(num_batches):
+                start_index = j * batch_size
+                end_index = min((j + 1) * batch_size, states.shape[0])
+
+                states_batch = states[start_index:end_index]
+                actions_batch = actions[start_index:end_index]
+                rewards_batch = rewards[start_index:end_index]
+
+                critic_learner.states = list(states_batch[:-1])
+                critic_learner.actions = list(actions_batch[:-1])
+                critic_learner.rewards = list(rewards_batch[:-1])
+
+                critic_learner.update_weights(states_batch[-1])
+
+                with tf.GradientTape() as tape:
+                    logits = actor_learner.actor.model(np.vstack(states_batch))
+                    loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=actions_batch,
+                                                                          logits=logits)
+
+                gradients = tape.gradient(loss, actor_learner.actor.model.trainable_weights)
+
+                optimizer.apply_gradients(zip(gradients, actor_learner.actor.model.trainable_weights))
+
+            result = actor_learner.actor.model.evaluate(states, actions, batch_size=batch_size, verbose=False)
+
+            print("Epoch %d accuracy: %.4f" % (i + 1, result[1]))
+
+        actor_learner.actor.save(actor_file)
+        critic_learner.critic.save(critic_file)
+
     else:
         if starting_network_file is None:
             network = TFNetwork(input_size=len(states[0]), output_size=num_phases,

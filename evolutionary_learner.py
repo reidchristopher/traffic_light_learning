@@ -11,7 +11,7 @@ class EvolutionaryLearner:
     @staticmethod
     def from_existing(networks):
 
-        return EvolutionaryLearner(None, None, None, None, starting_networks=networks)
+        return EvolutionaryLearner(None, None, None, None, None, starting_networks=networks)
 
     def __init__(self, population_size, input_size, output_size, hidden_layer_size, num_hidden_layers,
                  starting_networks=None):
